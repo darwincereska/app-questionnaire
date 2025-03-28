@@ -1,0 +1,5 @@
+export const APP_TITLE = "Chug Buddy"
+export const APP_ICON = ""
+export const APP_VERSION = "0.1.0"
+export const PB_URL = "https://aodl.pockethost.io"
+// export const PB_URL = "http://localhost:8090"
