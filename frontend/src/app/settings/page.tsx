@@ -1,20 +1,28 @@
 'use client'
 import { authCommands } from "@/app/lib/auth"
+// import { Haptics, ImpactStyle } from '@capacitor/haptics';
 import pb from "@/app/lib/pocketbase"
 import { useRouter } from "next/navigation"
 import { useState } from "react"
+import { ProfileCard } from "@/app/components/ProfileCard"
 import { Popup } from "@/app/components/Popup"
+import { Section } from "@/app/components/Section"
+import { goalCommands } from "@/app/lib/goal"
 import {motion} from 'framer-motion'
+import { ActionButton } from "@/app/components/ActionButton"
+import { GenderSelector } from "@/app/components/GenderSelector"
 export default function AccountPage() {
   const router = useRouter()
+  const [isChangeNameOpen, setIsChangeNameOpen] = useState(false)
   const logout = () => {
     authCommands.logout()
-    router.push("/login")
+    goalCommands.clear()
+    return router.replace("/login")
   }
   if (!authCommands.isAuthenticated()) {
-    router.push('/login')
+    return router.replace('/login')
   }
-  const [isChangeNameOpen, setIsChangeNameOpen] = useState(false)
+
 
   const changeName = () => {
     setIsChangeNameOpen(true)
@@ -23,13 +31,13 @@ export default function AccountPage() {
   const closeName = () => {
     setIsChangeNameOpen(false)
   }
-  
-  const deleteAccount = () => {
+
+  const deleteAccount = async () => {
     const userId = authCommands.getUser()?.id;
     if (userId) {
-      pb.collection('users').delete(userId);
+      await pb.collection('users').delete(userId);
       authCommands.logout();
-      router.push('/login');
+      return router.replace('/login');
     }
   }
 
@@ -58,16 +66,16 @@ export default function AccountPage() {
               </button>
               <button 
                 className="px-4 py-2 bg-[var(--accent)] rounded-lg"
-                onClick={() => {
+                onClick={async () => {
                   const userId = authCommands.getUser()?.id;
                   const input = document.querySelector('input[type="text"]') as HTMLInputElement;
                   if (userId && input) {
-                    pb.collection('users').update(userId, {
+                    await pb.collection('users').update(userId, {
                       name: input.value
                     });
+                    closeName();
+                    return router.refresh();
                   }
-                  router.push('/settings')
-                  closeName()
                 }}
               >
                 Save
@@ -78,71 +86,26 @@ export default function AccountPage() {
       <main className="flex flex-col gap-4">
       <Section title="Profile" id="details">
         <div className="flex flex-col space-y-4 w-full">
-          <div className="flex items-center space-x-3 p-3 bg-[var(--secondary)] rounded-lg">
-            <div className="w-12 h-12 rounded-full bg-[var(--accent)] flex items-center justify-center">
-              <span className="text-xl font-bold">{authCommands.getUser()?.name?.[0]}</span>
-            </div>
-            <div>
-              <p className="font-semibold">{authCommands.getUser()?.name}</p>
-              <p className="text-sm opacity-75">{authCommands.getUser()?.email}</p>
-            </div>
-          </div>
-          <button 
-            className="w-full py-3 px-4 bg-[var(--accent)] rounded-lg font-medium active:scale-95 transition-transform flex items-center justify-center space-x-2"
-            onClick={() => changeName()}
-          >
-            {/* <FaSignOutAlt size={20} /> */}
-            <div className=""/>
+          <ProfileCard name={authCommands.getUser()?.name}  email={authCommands.getUser()?.email}/>
+          <ActionButton variant="primary" onClick={() => changeName()}>
             <span>Change Name</span>
-          </button>
-          <div className="w-full py-3 px-4 bg-[var(--secondary)] rounded-lg font-medium flex items-center justify-between">
-            <div className="flex items-center space-x-2 w-full">
-              <button
-                className={`w-1/2 px-4 py-2 rounded-lg ${
-                  authCommands.getUser()?.gender === 'male' 
-                    ? 'bg-[var(--accent)]' 
-                    : 'bg-[var(--foreground)]'
-                }`}
-                onClick={() => {
-                  const userId = authCommands.getUser()?.id;
-                  if (userId) {
-                    pb.collection('users').update(userId, {
-                      gender: 'male'
-                    });
-                  }
-                  router.push('/settings');
-                }}
-              >
-                Male
-              </button>
-              <button 
-                className={`w-1/2 px-4 py-2 rounded-lg ${
-                  authCommands.getUser()?.gender === 'female'
-                    ? 'bg-[var(--accent)]'
-                    : 'bg-[var(--foreground)]' 
-                }`}
-                onClick={() => {
-                  const userId = authCommands.getUser()?.id;
-                  if (userId) {
-                    pb.collection('users').update(userId, {
-                      gender: 'female'
-                    });
-                  }
-                  router.push('/settings');
-                }}
-              >
-                Female
-              </button>
-            </div>
-          </div>
-          <button 
-            className="w-full py-3 px-4 bg-[var(--accent)] rounded-lg font-medium active:scale-95 transition-transform flex items-center justify-center space-x-2"
-            onClick={() => logout()}
-          >
-            {/* <FaSignOutAlt size={20} /> */}
-            <div className=""/>
+          </ActionButton>
+          <GenderSelector 
+            selectedGender={authCommands.getUser()?.gender}
+            onGenderChange={async (gender) => {
+              const userId = authCommands.getUser()?.id;
+              if (userId) {
+                await pb.collection('users').update(userId, {
+                  gender: gender,
+                  goal: gender === 'male' ? 3.7 : 2.7,
+                });
+                return router.refresh();
+              }
+            }}
+          />
+          <ActionButton variant="primary" onClick={() => logout()}>
             <span>Sign Out</span>
-          </button>
+          </ActionButton>
         </div>
       </Section>
       <Section title="Subscription">
@@ -153,43 +116,18 @@ export default function AccountPage() {
                 <p className="text-sm opacity-75">{authCommands.getUser()?.premium ? 'Premium' : 'Free'}</p>
             </div>
           </div>
-          <button 
-            className="w-full py-3 px-4 bg-[var(--accent)] rounded-lg font-medium active:scale-95 transition-transform flex items-center justify-center space-x-2"
-            onClick={() => logout()}
-          >
-            {/* <TbFlagCancel size={20} /> */}
-            <div className=""/>
-              <span>{authCommands.getUser()?.premium ? 'Unsubscribe' : 'Subscribe'}</span>
-          </button>
+          <ActionButton variant="primary" onClick={() => logout()}>
+            <span>{ authCommands.getUser()?.premium ? 'Unsubscribe' : 'Subscribe' }</span>
+          </ActionButton>
         </div>
       </Section>
       <Section title="Advanced" >
-        <button 
-          className="w-full py-3 px-4 bg-red-500 rounded-lg font-medium active:scale-95 transition-transform flex items-center justify-center space-x-2"
-          onClick={() => deleteAccount()}
-        >
-          {/* <TbFlagCancel size={20} /> */}
-          <div className=""/>
-            <span>Delete Account</span>
-        </button>
+        <ActionButton onClick={() => deleteAccount()} variant="danger">
+          <span>Delete Account</span>
+        </ActionButton>
       </Section>
       </main>
     </motion.div>
     </>
-  )
-}
-
-interface SectionProps {
-  id?: string;
-  title?: string;
-  children?: React.ReactNode;
-}
-
-function Section({title,id, children}: SectionProps) {
-  return (
-    <section id={id} className="w-full flex flex-col justify-start bg-[var(--foreground)] p-4 hover:brightness-125 rounded-lg shadow-sm">
-      <h1 className="text-lg font-bold mb-2">{title}</h1>
-      {children}
-    </section>
   )
 }

@@ -4,7 +4,7 @@ import { useState } from "react"
 import { authCommands } from "@/app/lib/auth"
 import { useRouter } from "next/navigation"
 import pb from "@/app/lib/pocketbase"
-
+import { Haptics, ImpactStyle } from "@capacitor/haptics"
 export default function LoginPage() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -13,7 +13,9 @@ export default function LoginPage() {
   const [isLogin, setIsLogin] = useState(true)
   const [error, setError] = useState('')
   const router = useRouter()
-
+  const hapticsImpactMedium = async () => {
+    await Haptics.impact({ style: ImpactStyle.Medium });
+  };
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setError('')
@@ -33,7 +35,7 @@ export default function LoginPage() {
           name: name
         })
       }
-      router.push('/settings')
+      return router.replace('/settings')
     } catch (err: unknown) {
       console.error(err)
     }
@@ -98,6 +100,7 @@ export default function LoginPage() {
         <button
           type="submit"
           className="w-full p-3 rounded bg-[var(--accent)] hover:bg-blue-700 transition"
+          onClick={async () => await hapticsImpactMedium()}
         >
           {isLogin ? 'Login' : 'Register'}
         </button>
